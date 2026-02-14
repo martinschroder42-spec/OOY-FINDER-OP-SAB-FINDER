@@ -1,0 +1,75 @@
+-- OOY FINDER OP (kurz & stabil – mit GUI)
+
+local Http = game:GetService("HttpService")
+local Tp = game:GetService("TeleportService")
+local lp = game.Players.LocalPlayer
+
+local PLACE_ID = game.PlaceId or 109983668079237
+local UNIVERSE_ID = 7709344486
+
+local isRunning = false
+
+local function getServers(c)
+    local url = "https://roproxy.com/v1/games/"..UNIVERSE_ID.."/servers/Public?sortOrder=Desc&limit=100"
+    if c then url = url.."&cursor="..c end
+    local s, r = pcall(function() return Http:JSONDecode(Http:GetAsync(url)) end)
+    if s and r.data then
+        table.sort(r.data, function(a,b) return (a.playing or 99) < (b.playing or 99) end)
+        return r.data, r.nextPageCursor
+    end
+    return {}, nil
+end
+
+local function start()
+    isRunning = true
+    local cursor = nil
+    while isRunning do
+        local servers, nc = getServers(cursor)
+        cursor = nc
+        for _, srv in servers do
+            local cnt = srv.playing or 0
+            if cnt >= 3 and cnt <= 10 and srv.id ~= game.JobId then
+                print("[OOY] Join: " .. cnt .. " Spieler")
+                pcall(function() Tp:TeleportToPlaceInstance(PLACE_ID, srv.id, lp) end)
+                task.wait(6)
+                return
+            end
+        end
+        task.wait(10)
+    end
+end
+
+-- GUI (kurz & lädt immer)
+local sg = Instance.new("ScreenGui", game.Players.LocalPlayer.PlayerGui)
+local f = Instance.new("Frame", sg)
+f.Size = UDim2.new(0, 300, 0, 180)
+f.Position = UDim2.new(0.5, -150, 0.5, -90)
+f.BackgroundColor3 = Color3.fromRGB(30,30,35)
+Instance.new("UICorner", f).CornerRadius = UDim.new(0, 10)
+
+local t = Instance.new("TextLabel", f)
+t.Size = UDim2.new(1,0,0,40)
+t.BackgroundTransparency = 1
+t.Text = "OOY FINDER OP"
+t.TextColor3 = Color3.fromRGB(0,255,180)
+t.TextSize = 22
+t.Font = Enum.Font.GothamBold
+
+local b1 = Instance.new("TextButton", f)
+b1.Size = UDim2.new(0.4,0,0,40)
+b1.Position = UDim2.new(0.1,0,0.5,0)
+b1.BackgroundColor3 = Color3.fromRGB(0,170,80)
+b1.Text = "START"
+b1.TextColor3 = Color3.new(1,1,1)
+b1.TextSize = 18
+
+local b2 = Instance.new("TextButton", f)
+b2.Size = UDim2.new(0.4,0,0,40)
+b2.Position = UDim2.new(0.5,0,0.5,0)
+b2.BackgroundColor3 = Color3.fromRGB(170,0,0)
+b2.Text = "STOP"
+b2.TextColor3 = Color3.new(1,1,1)
+b2.TextSize = 18
+
+b1.MouseButton1Click:Connect(function() isRunning = true task.spawn(start) end)
+b2.MouseButton1Click:Connect(function() isRunning = false end)
